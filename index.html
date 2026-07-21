@@ -1850,7 +1850,40 @@ id="targetSubnetDisplay" style="color: var(--cyan);">192.168.1.0/24</span></div>
     <script>
 console.log('[NetWatch] v3.2 - real-time build loaded');
 
-const API = '';
+const API = (() => {
+  /* ═══════════════════════════════════════════════════════════════
+     BACKEND CONFIGURATION — Set this if your Flask backend runs on
+     a different host or port than this HTML page.
+
+     Examples:
+       • Local dev:           ''  (same origin, e.g. localhost:5000)
+       • Separate backend:    'http://192.168.1.100:5000'
+       • Remote server:     'http://your-vps-ip:5000'
+       • With HTTPS:        'https://backend.yourdomain.com'
+
+     NOTE: If the backend is on a different domain, the backend must
+     send CORS headers (already enabled in netwatch.py via Flask-CORS).
+     ═══════════════════════════════════════════════════════════════ */
+  const BACKEND_URL = 'http://192.168.1.71:5000';  // Points to your PC running netwatch.py
+
+  return BACKEND_URL;
+})();
+
+/* Auto-detect connection issues and show helpful diagnostics */
+let _apiReachable = null;
+async function checkApiReachable() {
+  try {
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 3000);
+    const r = await fetch(API + '/api/session', { signal: ctrl.signal });
+    clearTimeout(to);
+    _apiReachable = r.ok || r.status === 401; // 401 means API exists, just not logged in
+    return _apiReachable;
+  } catch (e) {
+    _apiReachable = false;
+    return false;
+  }
+}
 let filterType = 'ALL', logFilter = 'ALL', devices = [], logs = [];
 
 // Override default window.alert to automatically use the beautiful neon box!
@@ -3967,7 +4000,7 @@ async function doLogin(){
     const d = await r.json();
     if(r.ok && d && d.ok){ location.reload(); }
     else { msg.textContent = (d && d.message) ? d.message.toUpperCase() : 'LOGIN FAILED'; }
-  }catch(e){ msg.textContent = 'CONNECTION ERROR — IS THE BACKEND RUNNING?'; }
+  }catch(e){ msg.innerHTML = 'CONNECTION ERROR — IS THE BACKEND RUNNING?<br><span style="font-size:9px;color:var(--muted)">Check that netwatch.py is running and BACKEND_URL is set correctly in the code.</span>'; }
 }
 async function doLogout(){
   try{ await fetch('/api/logout', {method:'POST'}); }catch(e){}
